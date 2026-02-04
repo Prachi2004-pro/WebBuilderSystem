@@ -1,7 +1,7 @@
 "use client";
 
-import Signup from '@/Components/authComponents/signup/signup'
 import React, { use } from 'react'
+import Signup from '@/components/authComponents/signup/signup'
 
 const Page = () => {
   return (

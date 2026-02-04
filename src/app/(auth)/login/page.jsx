@@ -1,7 +1,6 @@
 "use client";
-
-import Login from '@/Components/authComponents/login/login.jsx'
 import React from 'react'
+import Login from '@/components/authComponents/login/login'
 
 const Page = () => {
   return (
