@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/ui/Header";
 import Button from "@/components/ui/Button";
 import WebsitePreview from "@/components/WebsitePreview";
-// import { useParams } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
+import PortfolioPreview from "./PortfolioPreview";
 
 const defaultWebsiteData = {
+  templateType: "website", // or "portfolio"
   sections: {
     hero: true,
     features: true,
@@ -17,6 +18,7 @@ const defaultWebsiteData = {
     contactUs: true,
     faq: true,
     footer: true,
+    projects: true, // for portfolio
   },
 
   headerSection: {
@@ -56,6 +58,9 @@ const defaultWebsiteData = {
     SocialLinks: "",
     copywrite: "",
   },
+
+  // Portfolio specific
+  projects: [],
 };
 
 const sectionList = [
@@ -63,15 +68,13 @@ const sectionList = [
   { key: "features", label: "Features" },
   { key: "aboutUs", label: "About Us" },
   { key: "contactUs", label: "Contact Us" },
+  { key: "projects", label: "Projects" },
   { key: "faq", label: "FAQ" },
   { key: "footer", label: "Footer" },
 ];
 
 export default function Editor({ templateId, initial }) {
-  // console.log("Editor template Id: ", templateId); 
   const router = useRouter();
-  // const params = useParams();
-  // const templateId = params?.templateId;
   const [websiteData, setWebsiteData] = useState(defaultWebsiteData);
   const [status, setStatus] = useState(initial);
   const [loading, setLoading] = useState(false);
@@ -83,53 +86,52 @@ export default function Editor({ templateId, initial }) {
         const token = Cookies.get("auth_token");
         if (!token) return;
 
-        const res = await axios.get(
-          `${baseURL}/template/${templateId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const res = await axios.get(`${baseURL}/template/${templateId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
 
         const template = res.data.template || res.data;
 
         if (template) {
           setWebsiteData({
-            sections: template.sections || {
-              hero: true,
-              features: true,
-              aboutUs: true,
-              contactUs: true,
-              faq: true,
-              footer: true,
+            templateType: template.templateType || "website",
+            sections: {
+              hero:      !!(template.sections?.hero      ?? true),
+              features:  !!(template.sections?.features  ?? true),
+              aboutUs:   !!(template.sections?.aboutUs   ?? true),
+              contactUs: !!(template.sections?.contactUs ?? true),
+              faq:       !!(template.sections?.faq       ?? true),
+              footer:    !!(template.sections?.footer     ?? true),
+              projects:  !!(template.sections?.projects  ?? true),
             },
 
             headerSection: {
-              logo: template.headerSection?.logo || "",
-              businessName: template.headerSection?.businessName || "",
+              logo:            template.headerSection?.logo            || "",
+              businessName:    template.headerSection?.businessName    || "",
               navigationLinks: template.headerSection?.navigationLinks || [],
             },
 
             heroSection: {
-              title: template.heroSection?.title || "",
-              tagline: template.heroSection?.tagline || "",
+              title:       template.heroSection?.title       || "",
+              tagline:     template.heroSection?.tagline     || "",
               description: template.heroSection?.description || "",
-              heroImage: template.heroSection?.heroImage || "",
-              button: template.heroSection?.button || "",
-              heroFile: null, // frontend only
+              heroImage:   template.heroSection?.heroImage   || "",
+              button:      template.heroSection?.button      || "",
+              heroFile:    null, // frontend only
             },
 
             features: template.features || [],
 
             aboutUs: {
-              aboutTitle: template.aboutUs?.aboutTitle || "",
+              aboutTitle:       template.aboutUs?.aboutTitle       || "",
               aboutDescription: template.aboutUs?.aboutDescription || "",
-              team: template.aboutUs?.team || [],
+              team:             template.aboutUs?.team             || [],
             },
 
             contactUs: {
-              email: template.contactUs?.email || "",
+              email:   template.contactUs?.email   || "",
               phoneNo: template.contactUs?.phoneNo || "",
               address: template.contactUs?.address || "",
             },
@@ -137,11 +139,13 @@ export default function Editor({ templateId, initial }) {
             FAQ: template.FAQ || [],
 
             footer: {
-              brandName: template.footer?.brandName || "",
-              brandLogo: template.footer?.brandLogo || "",
+              brandName:   template.footer?.brandName   || "",
+              brandLogo:   template.footer?.brandLogo   || "",
               SocialLinks: template.footer?.SocialLinks || "",
-              copywrite: template.footer?.copywrite || "",
+              copywrite:   template.footer?.copywrite   || "",
             },
+
+            projects: template.projects || [],
           });
         }
       } catch (error) {
@@ -223,80 +227,65 @@ export default function Editor({ templateId, initial }) {
 
       const formData = new FormData();
 
-      //sections
+      // Sections
       Object.entries(websiteData.sections).forEach(([key, value]) => {
         formData.append(`sections[${key}]`, value);
       });
 
       // Header section
-      formData.append(
-        "headerSection[businessName]",
-        websiteData.headerSection.businessName,
-      );
+      formData.append("headerSection[businessName]", websiteData.headerSection.businessName);
 
       // Hero section
-      formData.append("heroSection[title]", websiteData.heroSection.title);
-      formData.append("heroSection[tagline]", websiteData.heroSection.tagline);
-      formData.append(
-        "heroSection[description]",
-        websiteData.heroSection.description,
-      );
-      formData.append("heroSection[button]", websiteData.heroSection.button);
+      formData.append("heroSection[title]",       websiteData.heroSection.title);
+      formData.append("heroSection[tagline]",     websiteData.heroSection.tagline);
+      formData.append("heroSection[description]", websiteData.heroSection.description);
+      formData.append("heroSection[button]",      websiteData.heroSection.button);
 
       // Image
       if (websiteData.heroSection.heroFile) {
         formData.append("heroImage", websiteData.heroSection.heroFile);
       } else if (websiteData.heroSection.heroImage) {
-        formData.append(
-          "heroSection[heroImage]",
-          websiteData.heroSection.heroImage,
-        );
+        formData.append("heroSection[heroImage]", websiteData.heroSection.heroImage);
       }
 
       // Features
       websiteData.features.forEach((feature, index) => {
-        formData.append(`features[${index}][title]`, feature.title);
+        formData.append(`features[${index}][title]`,       feature.title);
         formData.append(`features[${index}][description]`, feature.description);
       });
 
       // About Us
-      formData.append("aboutUs[aboutTitle]", websiteData.aboutUs.aboutTitle);
-      formData.append(
-        "aboutUs[aboutDescription]",
-        websiteData.aboutUs.aboutDescription,
-      );
+      formData.append("aboutUs[aboutTitle]",       websiteData.aboutUs.aboutTitle);
+      formData.append("aboutUs[aboutDescription]", websiteData.aboutUs.aboutDescription);
 
       websiteData.aboutUs.team.forEach((member, index) => {
-        formData.append(
-          `aboutUs[team][${index}][memberName]`,
-          member.memberName,
-        );
-        formData.append(
-          `aboutUs[team][${index}][memberRole]`,
-          member.memberRole,
-        );
-        formData.append(
-          `aboutUs[team][${index}][memberImage]`,
-          member.memberImage,
-        );
+        formData.append(`aboutUs[team][${index}][memberName]`,  member.memberName);
+        formData.append(`aboutUs[team][${index}][memberRole]`,  member.memberRole);
+        formData.append(`aboutUs[team][${index}][memberImage]`, member.memberImage);
       });
 
       // Contact Us
-      formData.append("contactUs[email]", websiteData.contactUs.email);
+      formData.append("contactUs[email]",   websiteData.contactUs.email);
       formData.append("contactUs[phoneNo]", websiteData.contactUs.phoneNo);
       formData.append("contactUs[address]", websiteData.contactUs.address);
 
       // FAQ
       websiteData.FAQ.forEach((faq, index) => {
         formData.append(`FAQ[${index}][question]`, faq.question);
-        formData.append(`FAQ[${index}][answer]`, faq.answer);
+        formData.append(`FAQ[${index}][answer]`,   faq.answer);
+      });
+
+      // Projects
+      websiteData.projects.forEach((project, index) => {
+        formData.append(`projects[${index}][projectName]`,        project.projectName);
+        formData.append(`projects[${index}][projectDescription]`, project.projectDescription);
       });
 
       // Footer
-      formData.append("footer[brandName]", websiteData.footer.brandName);
-      formData.append("footer[brandLogo]", websiteData.footer.brandLogo);
+      formData.append("footer[brandName]",   websiteData.footer.brandName);
+      formData.append("footer[brandLogo]",   websiteData.footer.brandLogo);
       formData.append("footer[SocialLinks]", websiteData.footer.SocialLinks);
-      formData.append("footer[copywrite]", websiteData.footer.copywrite);
+      formData.append("footer[copywrite]",   websiteData.footer.copywrite);
 
       // API Call to update template
       await axios.put(
@@ -316,8 +305,6 @@ export default function Editor({ templateId, initial }) {
       alert("Save failed ❌");
     }
   };
-
-  // Cleanup function to revoke object URLs when component unmounts
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -367,13 +354,14 @@ export default function Editor({ templateId, initial }) {
             {sectionList.map((section) => (
               <div
                 key={section.key}
-                className="flex items-center justify-between gap-2 mb-2 "
+                className="flex items-center justify-between gap-2 mb-2"
               >
                 <span>{section.label}</span>
 
+                {/* ✅ FIX: !! ensures value is always boolean, never undefined */}
                 <input
                   type="checkbox"
-                  checked={websiteData.sections?.[section.key]}
+                  checked={!!websiteData.sections?.[section.key]}
                   onChange={(e) =>
                     setWebsiteData((prev) => ({
                       ...prev,
@@ -397,11 +385,7 @@ export default function Editor({ templateId, initial }) {
                 placeholder="Company Name"
                 value={websiteData.headerSection.businessName}
                 onChange={(e) =>
-                  handleNestedChange(
-                    "headerSection",
-                    "businessName",
-                    e.target.value,
-                  )
+                  handleNestedChange("headerSection", "businessName", e.target.value)
                 }
                 className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
               />
@@ -412,7 +396,6 @@ export default function Editor({ templateId, initial }) {
               <div className="mt-8 rounded-lg space-y-2">
                 <h3 className="text-lg font-semibold mb-4">Hero Section</h3>
 
-                {/* Hero Title */}
                 <input
                   type="text"
                   placeholder="Hero Title"
@@ -423,7 +406,6 @@ export default function Editor({ templateId, initial }) {
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
                 />
 
-                {/* Tagline */}
                 <input
                   type="text"
                   placeholder="Tagline"
@@ -434,22 +416,16 @@ export default function Editor({ templateId, initial }) {
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
                 />
 
-                {/* Description */}
                 <textarea
                   placeholder="Hero Description"
                   rows={3}
                   value={websiteData.heroSection.description}
                   onChange={(e) =>
-                    handleNestedChange(
-                      "heroSection",
-                      "description",
-                      e.target.value,
-                    )
+                    handleNestedChange("heroSection", "description", e.target.value)
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
                 />
 
-                {/* Button Text */}
                 <input
                   type="text"
                   placeholder="Button Text"
@@ -460,7 +436,6 @@ export default function Editor({ templateId, initial }) {
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
                 />
 
-                {/* Hero Image */}
                 <div>
                   <label className="block text-sm mb-2 text-gray-400">
                     Hero Image
@@ -484,11 +459,7 @@ export default function Editor({ templateId, initial }) {
                         : websiteData.heroSection.heroImage
                     }
                     onChange={(e) =>
-                      handleNestedChange(
-                        "heroSection",
-                        "heroImage",
-                        e.target.value,
-                      )
+                      handleNestedChange("heroSection", "heroImage", e.target.value)
                     }
                     className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
                   />
@@ -538,9 +509,7 @@ export default function Editor({ templateId, initial }) {
                       variant="secondary"
                       className="mt-2"
                       onClick={() => {
-                        const updated = websiteData.features.filter(
-                          (_, i) => i !== index,
-                        );
+                        const updated = websiteData.features.filter((_, i) => i !== index);
                         setWebsiteData({ ...websiteData, features: updated });
                       }}
                     >
@@ -577,10 +546,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      aboutUs: {
-                        ...websiteData.aboutUs,
-                        aboutTitle: e.target.value,
-                      },
+                      aboutUs: { ...websiteData.aboutUs, aboutTitle: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -592,10 +558,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      aboutUs: {
-                        ...websiteData.aboutUs,
-                        aboutDescription: e.target.value,
-                      },
+                      aboutUs: { ...websiteData.aboutUs, aboutDescription: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -615,10 +578,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      contactUs: {
-                        ...websiteData.contactUs,
-                        email: e.target.value,
-                      },
+                      contactUs: { ...websiteData.contactUs, email: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -631,10 +591,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      contactUs: {
-                        ...websiteData.contactUs,
-                        phoneNo: e.target.value,
-                      },
+                      contactUs: { ...websiteData.contactUs, phoneNo: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -647,10 +604,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      contactUs: {
-                        ...websiteData.contactUs,
-                        address: e.target.value,
-                      },
+                      contactUs: { ...websiteData.contactUs, address: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -695,9 +649,7 @@ export default function Editor({ templateId, initial }) {
                     <Button
                       variant="secondary"
                       onClick={() => {
-                        const updated = websiteData.FAQ.filter(
-                          (_, i) => i !== index,
-                        );
+                        const updated = websiteData.FAQ.filter((_, i) => i !== index);
                         setWebsiteData({ ...websiteData, FAQ: updated });
                       }}
                     >
@@ -719,6 +671,66 @@ export default function Editor({ templateId, initial }) {
               </div>
             )}
 
+            {/* Projects Section */}
+            {websiteData.sections.projects && (
+              <div className="mt-8 space-y-2">
+                <h3 className="text-lg font-semibold mb-4">Projects</h3>
+
+                {websiteData.projects.map((project, index) => (
+                  <div key={index} className="mb-4 border p-3 rounded-lg">
+                    <input
+                      type="text"
+                      placeholder="Project Name"
+                      value={project.projectName}
+                      onChange={(e) => {
+                        const updated = [...websiteData.projects];
+                        updated[index].projectName = e.target.value;
+                        setWebsiteData({ ...websiteData, projects: updated });
+                      }}
+                      className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white mb-2"
+                    />
+
+                    <textarea
+                      placeholder="Project Description"
+                      rows={3}
+                      value={project.projectDescription}
+                      onChange={(e) => {
+                        const updated = [...websiteData.projects];
+                        updated[index].projectDescription = e.target.value;
+                        setWebsiteData({ ...websiteData, projects: updated });
+                      }}
+                      className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white mb-2"
+                    />
+
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => {
+                        const updated = websiteData.projects.filter((_, i) => i !== index);
+                        setWebsiteData({ ...websiteData, projects: updated });
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+
+                <Button
+                  onClick={() =>
+                    setWebsiteData({
+                      ...websiteData,
+                      projects: [
+                        ...websiteData.projects,
+                        { projectName: "", projectDescription: "", projectImage: "" },
+                      ],
+                    })
+                  }
+                >
+                  Add Project
+                </Button>
+              </div>
+            )}
+
             {/* Footer Section */}
             {websiteData.sections.footer && (
               <div className="mt-8 rounded-lg space-y-2">
@@ -731,10 +743,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      footer: {
-                        ...websiteData.footer,
-                        brandName: e.target.value,
-                      },
+                      footer: { ...websiteData.footer, brandName: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -747,10 +756,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      footer: {
-                        ...websiteData.footer,
-                        brandLogo: e.target.value,
-                      },
+                      footer: { ...websiteData.footer, brandLogo: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -763,10 +769,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      footer: {
-                        ...websiteData.footer,
-                        SocialLinks: e.target.value,
-                      },
+                      footer: { ...websiteData.footer, SocialLinks: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -779,10 +782,7 @@ export default function Editor({ templateId, initial }) {
                   onChange={(e) =>
                     setWebsiteData({
                       ...websiteData,
-                      footer: {
-                        ...websiteData.footer,
-                        copywrite: e.target.value,
-                      },
+                      footer: { ...websiteData.footer, copywrite: e.target.value },
                     })
                   }
                   className="w-full p-3 border border-[#505050] rounded-lg focus:border-blue-500 focus:outline-none text-white"
@@ -794,7 +794,11 @@ export default function Editor({ templateId, initial }) {
 
         {/* Right Panel - Preview */}
         <div className="flex-1 bg-[#1b1b1b] overflow-y-auto p-14">
-          <WebsitePreview websiteData={websiteData} />
+          {websiteData?.templateType === "portfolio" ? (
+            <PortfolioPreview data={websiteData} />
+          ) : (
+            <WebsitePreview data={websiteData} />
+          )}
         </div>
       </div>
     </div>

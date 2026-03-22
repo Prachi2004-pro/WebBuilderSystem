@@ -28,7 +28,7 @@ export default function TemplateSelection() {
     },
   ];
 
-  // TODO: Submit selected template to backend or state management
+  //Submit selected template to backend or state management
   const handleSubmit = async () => {
     if (!selectedTemplate) {
       alert("Please select a template before continuing.");
@@ -49,6 +49,19 @@ export default function TemplateSelection() {
     formData.append("templateType", selectedTemplate.type);
     formData.append("templateName", selectedTemplate.title);
 
+    // // 🔥 ADD THIS (important)
+    // if (selectedTemplate.type === "portfolio") {
+    //   formData.append("heroSection[title]", "Your Name");
+    //   formData.append("heroSection[tagline]", "Frontend Developer");
+    //   formData.append("heroSection[description]", "Short intro about you");
+
+    //   formData.append("aboutUs[aboutDescription]", "Write about yourself");
+
+    //   // Default project
+    //   formData.append("features[0][title]", "Project 1");
+    //   formData.append("features[0][description]", "Project description");
+    // }
+
     if (heroImageFile) {
       formData.append("heroImage", heroImageFile);
     }
@@ -67,7 +80,7 @@ export default function TemplateSelection() {
 
       console.log("Template created:", res.data);
       const templateId = res.data.template._id;
-      router.push(`/editor/${templateId}`);
+      router.push(`/editor/${templateId}?type=${selectedTemplate.type}`);
     } catch (error) {
       console.log("Error creating template:", error);
       alert("Failed to create template. Please try again.");

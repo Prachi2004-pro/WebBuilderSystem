@@ -41,7 +41,7 @@ const Signup = () => {
         setLoading(false);
       }
     } catch (errors) {
-      setErrors("An error occurred during signup. Please try again.");
+      setErrors("Invalid credentials. Please try again.");
       setLoading(false);
     }finally {
       setLoading(false);
@@ -65,6 +65,7 @@ const Signup = () => {
               className="w-full p-2 border rounded-lg"
               type="text"
               name="username"
+              required
               placeholder="Username"
               onChange={handleChange}
             />
@@ -76,6 +77,7 @@ const Signup = () => {
               className="w-full p-2 border rounded-lg"
               type="email"
               name="email"
+              required
               placeholder="Email"
               onChange={handleChange}
             />
@@ -87,6 +89,7 @@ const Signup = () => {
               className="w-full p-2 border rounded-lg"
               type="password"
               name="password"
+              required
               placeholder="Password"
               onChange={handleChange}
             />

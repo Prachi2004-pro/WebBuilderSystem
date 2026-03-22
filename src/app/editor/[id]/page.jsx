@@ -1,12 +1,12 @@
 import Editor from '@/components/Editor'
-// import Editor1 from '@/components/Editor1'
 
-export default async function EditorPage({params}) {
+export default async function EditorPage({params, searchParams}) {
   const { id } = await params;
-  return (
-    <div>
-      <Editor templateId={id} initial="draft" />
-      {/* <Editor1 />  */}
-    </div>
-  )
+  const resolvedSearchParams = await searchParams; // ✅ FIX
+
+  const type = resolvedSearchParams?.type;
+
+  console.log("Type:", type);
+
+  return <Editor templateId={id}  initial="draft" />;
 }
